@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solmar Bay — Streets of the Sun</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0e1a24;
+    font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; color: #f0f0f0; }
+  #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .hidden { display: none !important; }
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+  .panel { background: rgba(10, 20, 30, 0.62); border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 10px; padding: 10px 14px; backdrop-filter: blur(2px); }
+  #topleft { position: absolute; top: 14px; left: 14px; min-width: 230px; }
+  #health-bar { width: 100%; height: 14px; background: #222; border-radius: 7px; overflow: hidden; margin: 6px 0 2px; }
+  #health-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #27ae60, #2ecc71); transition: width 0.2s; }
+  #health-text { font-size: 12px; color: #cfe8d8; }
+  #money { font-size: 22px; font-weight: 700; color: #7dff9b; margin-top: 4px; }
+  #topright { position: absolute; top: 14px; right: 14px; text-align: right; }
+  #stars { font-size: 24px; letter-spacing: 3px; color: #888; text-shadow: 0 0 6px rgba(0,0,0,0.7); }
+  #clock { font-size: 18px; font-weight: 600; color: #ffe9a8; margin-top: 2px; }
+  #minimap { position: absolute; top: 92px; right: 14px; width: 200px; height: 200px;
+    border: 2px solid rgba(255,255,255,0.35); border-radius: 8px; background: #0e1a24; }
+  #objective { position: absolute; left: 14px; bottom: 14px; max-width: 430px; }
+  #objective h3 { font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: #ffd23f; margin-bottom: 3px; }
+  #objective-text { font-size: 16px; }
+  #speed { position: absolute; right: 14px; bottom: 14px; text-align: right; }
+  #speed-val { font-size: 34px; font-weight: 800; color: #fff; line-height: 1; }
+  #speed small { font-size: 12px; color: #cfe0ea; }
+  #crosshair { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    font-size: 22px; color: rgba(255,255,255,0.9); text-shadow: 0 0 4px #000; }
+  #toast { position: absolute; left: 50%; top: 76px; transform: translateX(-50%);
+    background: rgba(10, 20, 30, 0.8); border: 1px solid rgba(255,210,63,0.5); color: #ffe9a8;
+    padding: 10px 18px; border-radius: 8px; font-size: 16px; max-width: 640px; text-align: center; }
+  .overlay { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
+    background: rgba(5, 12, 20, 0.72); }
+  .card { background: linear-gradient(160deg, #12283d, #0a1622); border: 1px solid rgba(255,210,63,0.35);
+    border-radius: 14px; padding: 34px 40px; max-width: 620px; width: 92%; text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+  .card h1 { font-size: 46px; letter-spacing: 2px; color: #ffd23f; line-height: 1.05; }
+  .card h2 { font-size: 20px; font-weight: 400; color: #9fd8ff; margin: 6px 0 18px; letter-spacing: 4px; text-transform: uppercase; }
+  .card p { font-size: 15px; line-height: 1.55; color: #d6e4ee; margin: 10px 0; }
+  .card .controls { font-size: 13.5px; color: #a9c3d4; text-align: left; margin: 16px auto 4px; max-width: 480px; line-height: 1.8; }
+  .card .controls b { color: #ffd23f; }
+  .btn { pointer-events: auto; display: inline-block; margin: 8px 6px 0; padding: 12px 26px; font-size: 17px;
+    font-weight: 700; color: #12200a; background: #ffd23f; border: none; border-radius: 9px; cursor: pointer; }
+  .btn:hover { background: #ffe08a; }
+  .btn.secondary { background: #2e86c1; color: #fff; }
+  .btn.secondary:hover { background: #3d9bd8; }
+  .btn:disabled { background: #555; color: #999; cursor: not-allowed; }
+  .fine { font-size: 12px; color: #7d94a6; margin-top: 16px; }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="topleft" class="panel">
+    <div style="font-size:12px; letter-spacing:1px; color:#9fd8ff;">HEALTH <span id="health-text">100</span></div>
+    <div id="health-bar"><div id="health-fill"></div></div>
+    <div id="money">$250</div>
+  </div>
+  <div id="topright" class="panel">
+    <div id="stars">☆☆☆☆☆</div>
+    <div id="clock">09:00</div>
+  </div>
+  <canvas id="minimap" width="200" height="200"></canvas>
+  <div id="objective" class="panel">
+    <h3>Objective</h3>
+    <div id="objective-text">Welcome to Solmar Bay.</div>
+  </div>
+  <div id="speed" class="panel hidden"><span id="speed-val">0</span> <small>km/h</small></div>
+  <div id="crosshair">+</div>
+  <div id="toast" class="hidden"></div>
+</div>
+
+<div id="menu" class="overlay">
+  <div class="card">
+    <h1>SOLMAR BAY</h1>
+    <h2>Streets of the Sun</h2>
+    <p>Explore a sun-soaked coastal city on foot and by car. Steal cars, outrun the police,
+       and run five story missions for fixer Mara Kline.</p>
+    <button id="btn-new" class="btn">New Game</button>
+    <button id="btn-continue" class="btn secondary" disabled>Continue</button>
+    <div class="controls">
+      <b>WASD</b> move &nbsp;·&nbsp; <b>Mouse</b> look &nbsp;·&nbsp; <b>Shift</b> sprint &nbsp;·&nbsp; <b>Space</b> jump / handbrake<br>
+      <b>E</b> enter / exit car &nbsp;·&nbsp; <b>Click</b> shoot &nbsp;·&nbsp; <b>F</b> melee &nbsp;·&nbsp; <b>P / Esc</b> pause<br>
+      Driving: <b>W/S</b> gas / brake &nbsp;·&nbsp; <b>A/D</b> steer. Progress saves to this browser.
+    </div>
+    <div class="fine">An original fan-made open-world crime game. Not affiliated with Rockstar Games.</div>
+  </div>
+</div>
+
+<div id="briefing" class="overlay hidden">
+  <div class="card">
+    <h2 id="briefing-title">Mission</h2>
+    <p id="briefing-body"></p>
+    <button id="btn-briefing" class="btn">Let's go</button>
+  </div>
+</div>
+
+<div id="pause" class="overlay hidden">
+  <div class="card">
+    <h2>Paused</h2>
+    <p>Take a breath. Solmar Bay will wait.</p>
+    <button id="btn-resume" class="btn">Resume</button>
+    <button id="btn-restart" class="btn secondary">Restart story</button>
+  </div>
+</div>
+
+<div id="busted" class="overlay hidden">
+  <div class="card">
+    <h2>BUSTED</h2>
+    <p id="busted-text"></p>
+    <button id="btn-busted" class="btn">Back to the streets</button>
+  </div>
+</div>
+
+<div id="complete" class="overlay hidden">
+  <div class="card">
+    <h2>STORY COMPLETE</h2>
+    <p id="complete-text"></p>
+    <button id="btn-complete" class="btn">Keep exploring</button>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
